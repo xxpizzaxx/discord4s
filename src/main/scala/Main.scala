@@ -10,7 +10,13 @@ import moe.pizza.zkapi.ZKBAPI
 import org.http4s.client.blaze.PooledHttp1Client
 import EsiClient._
 import eveapi.esi.api.ArgonautCodecs._
-import argonaut._, Argonaut._, ArgonautShapeless._
+import argonaut._
+import Argonaut._
+import ArgonautShapeless._
+import eveapi.esi.model._
+import shapeless._
+
+import scalaz.concurrent.Task
 
 object Main extends App {
   val token = ""
@@ -20,65 +26,49 @@ object Main extends App {
   val client = new ClientBuilder()
     .withToken(token)
     .build()
+  /*
   val helloSayer = DiscordService {
     case _: ReadyEvent =>
       println("helo")
   }
+  */
   val nickChanger = DiscordService {
     case e: ReadyEvent =>
-      e.getClient.changeUsername("COOL BOT 420")
+      Task { e.getClient.changeUsername("whobot420") }
   }
+  val whoCommand = "!who ([\\w ]+)".r
   val whoBot = DiscordService {
-    case MessageReceived(m) if m.getContent.startsWith("!who") =>
-      val name = m.getContent.stripPrefix("!who").trim()
-      val message = EsiClient.search
-        .getSearch(name, categories = List("character"), strict = Some(true))
-        .run(esi)
-        .unsafePerformSyncAttempt
-        .toOption
-        .flatMap(_.toOption)
-        .flatMap(_.character.flatMap(_.headOption))
-        .flatMap(
-          charid =>
-            zkb.stats
-              .character(charid.toInt)(httpClient)
-              .unsafePerformSyncAttempt
-              .toOption)
-        .map { stat =>
-          s"${stat.info.name} [${stat.shipsDestroyed},${stat.shipsLost}]"
+    case msg @ MessageReceived(whoCommand(name)) =>
+      val channel = msg.getMessage.getChannel
+      for {
+        _               <- Task { channel.sendMessage(s"doing a who query on $name") }
+        attemptid       <- EsiClient.search.getSearch(List("character"), name, strict = Some(true)).run(esi)
+        cid             <- Task {
+          for {
+            searchResult <- attemptid.toOption
+            characterResults <- searchResult.character
+            firstId <- characterResults.headOption
+          } yield firstId
         }
-        .getOrElse {
-          EsiClient.search
-            .getSearch(name,
-                       categories = List("corporation"),
-                       strict = Some(true))
-            .run(esi)
-            .unsafePerformSyncAttempt
-            .toOption
-            .flatMap(_.toOption)
-            .flatMap(_.corporation.flatMap(_.headOption))
-            .flatMap(charid =>
-              zkb.stats
-                .corporation(charid.toInt)(httpClient)
-                .unsafePerformSyncAttempt
-                .toOption)
-            .map { stat =>
-              val activecharacters = stat.activepvp
-                .flatMap(_.characters.map(_.count))
-                .getOrElse(0L)
-                .toDouble
-              val charactercount = stat.info.memberCount
-              val activePercentage =
-                ((activecharacters / charactercount) * 100).toInt
-              s"${stat.info.name} [${stat.shipsDestroyed.toInt},${stat.shipsLost.toInt}] ${activePercentage}% active"
-            }
-            .getOrElse {
-              "Unable to find a character or corporation called that"
-            }
+        id              <- Task { cid.get }
+        character       <- EsiClient.character.getCharactersCharacterId(id).run(esi)
+        characterInfo   <- Task { character.toOption.get }
+        corphistory     <- EsiClient.character.getCharactersCharacterIdCorporationhistory(id).run(esi)
+        lastCorpJoin    <- Task { corphistory.toList.flatten.head.start_date.get }
+        corporation     <- EsiClient.corporation.getCorporationsCorporationId(characterInfo.corporation_id).run(esi)
+        corporationInfo <- Task { corporation.toOption.get }
+        // they may not have an alliance so these are all Options
+        alliances       <- Task.gatherUnordered(corporationInfo.alliance_id.map{i => EsiClient.alliance.getAlliancesAllianceId(i).run(esi)}.toSeq)
+        allianceInfo    <- Task { alliances.headOption.flatMap(_.toOption) }
+        kbstats         <- zkb.stats.character(id.toLong)(httpClient)
+        result          <- Task {
+          s"${characterInfo.name}[${kbstats.shipsDestroyed},${kbstats.shipsLost}]" +
+            s" - ${corporationInfo.corporation_name} (${lastCorpJoin})" +
+            s"${allianceInfo.map(" - " + _.alliance_name).getOrElse("")}"
         }
-      m.getChannel.sendMessage(message)
+        _               <- Task { msg.getMessage.getChannel.sendMessage(result) }
+      } yield ()
   }
-
   val b = new DiscordBot(client)(whoBot)
   client.login()
 }

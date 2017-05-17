@@ -12,8 +12,11 @@ object Types {
   type DiscordService = Kleisli[Task, Event, Event]
   object DiscordService {
     def lift(f: Event => Task[Event]): DiscordService = Kleisli.kleisli(f)
-    def apply(pf: PartialFunction[Event, Unit]): DiscordService =
-      lift(e => Task{pf.apply(e); e })
+    def apply(pf: PartialFunction[Event, Task[Any]]): DiscordService =
+      lift(e => Task{
+        println(pf.apply(e).unsafePerformSyncAttempt)
+        ; e
+      })
   }
 }
 

@@ -11,7 +11,7 @@ resolvers += Resolver.jcenterRepo
 libraryDependencies ++= Seq(
   "com.github.austinv11"        % "Discord4J"     % "2.7.0",
   "moe.pizza"                  %% "eveapi"        % "0.56",
-  "eveapi"                     %% "esi-client"    % "1.230.0"
+  "eveapi"                     %% "esi-client"    % "1.419.0"
 )
 
 libraryDependencies ++= Seq(
