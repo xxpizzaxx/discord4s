@@ -5,16 +5,15 @@ import freestyle.implicits._
 import cats._
 import cats.implicits._
 import cats.effect.IO
-import cats.data.Reader
+import cats.data.{Reader, ReaderT}
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent
 import sx.blah.discord.handle.obj.{IChannel, IMessage}
 
 object freedsl {
 
-  type WithMessage[A] = Reader[MessageReceivedEvent, A]
+  type WithMessage[A] = ReaderT[IO, MessageReceivedEvent, A]
 
   @tagless trait Bot {
-    // the macro dies if these don't have argument lists, make it take Unit for now I guess
     def getMessage(a: Unit): FS[String]
     def getChannel(a: Unit): FS[String]
     def reply(msg: String): FS[Unit]
@@ -22,9 +21,9 @@ object freedsl {
 
   object BotInterpreter {
     implicit val botHandler = new Bot.Handler[WithMessage] {
-      override def getMessage(a: Unit) = Reader { m => m.getMessage.getContent }
-      override def getChannel(a: Unit) = Reader { m => m.getMessage.getChannel.getName }
-      override def reply(msg: String) = Reader { m => m.getMessage.getChannel.sendMessage(msg) }
+      override def getMessage(a: Unit) = ReaderT { m => IO { m.getMessage.getContent } }
+      override def getChannel(a: Unit) = ReaderT { m => IO { m.getMessage.getChannel.getName } }
+      override def reply(msg: String)  = ReaderT { m => IO { m.getMessage.getChannel.sendMessage(msg) } }
     }
   }
 
@@ -34,7 +33,6 @@ object freetest extends App {
   import freedsl._
 
   def program[F[_] : Monad](implicit bot: Bot[F]) = {
-
     for {
       msg <- bot.getMessage(())
       channel <- bot.getChannel(())
@@ -55,7 +53,7 @@ object freetest extends App {
   when(channel.getName).thenReturn("#coolchannel")
 
   val msgevent = new MessageReceivedEvent(msg)
-  program[WithMessage].run(msgevent)
+  program[WithMessage].run(msgevent).unsafeRunSync
 
   verify(channel).sendMessage("I saw someone say oh hello there in #coolchannel")
 
