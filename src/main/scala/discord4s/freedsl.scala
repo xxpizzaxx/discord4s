@@ -1,7 +1,5 @@
 package discord4s
 
-import freestyle._
-import freestyle.implicits._
 import cats._
 import cats.implicits._
 import cats.effect.IO
@@ -13,17 +11,24 @@ object freedsl {
 
   type WithMessage[A] = ReaderT[IO, MessageReceivedEvent, A]
 
-  @tagless trait Bot {
-    def getMessage(a: Unit): FS[String]
-    def getChannel(a: Unit): FS[String]
-    def reply(msg: String): FS[Unit]
+  trait Bot[F[_]] {
+    def getMessage: F[String]
+    def getChannel: F[String]
+    def reply(msg: String): F[Unit]
+    def setNickname(nick: String): F[Unit]
+    def getChannelTopic: F[String]
+    def getChannelMembers: F[List[String]]
   }
 
   object BotInterpreter {
-    implicit val botHandler = new Bot.Handler[WithMessage] {
-      override def getMessage(a: Unit) = ReaderT { m => IO { m.getMessage.getContent } }
-      override def getChannel(a: Unit) = ReaderT { m => IO { m.getMessage.getChannel.getName } }
+    import scala.collection.JavaConverters._
+    implicit val botHandler = new Bot[WithMessage] {
+      override def getMessage = ReaderT { m => IO { m.getMessage.getContent } }
+      override def getChannel = ReaderT { m => IO { m.getMessage.getChannel.getName } }
       override def reply(msg: String)  = ReaderT { m => IO { m.getMessage.getChannel.sendMessage(msg) } }
+      override def setNickname(nick: String) = ReaderT { m => IO { m.getClient.changeUsername(nick)} }
+      override def getChannelTopic = ReaderT { m => IO { m.getMessage.getChannel.getTopic }}
+      override def getChannelMembers = ReaderT { m => IO { m.getMessage.getChannel.getUsersHere.asScala.map(_.getName).toList }}
     }
   }
 
@@ -34,8 +39,8 @@ object freetest extends App {
 
   def program[F[_] : Monad](implicit bot: Bot[F]) = {
     for {
-      msg <- bot.getMessage(())
-      channel <- bot.getChannel(())
+      msg <- bot.getMessage
+      channel <- bot.getChannel
       // I'm an echo bot!
       _ <- bot.reply(s"I saw someone say $msg in $channel")
     } yield ()
