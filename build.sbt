@@ -8,7 +8,11 @@ resolvers += "jitpack" at "https://jitpack.io"
 
 resolvers += Resolver.jcenterRepo
 
+scalacOptions ++= Seq("-Ypartial-unification")
+
 addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
+addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.4")
+
 
 libraryDependencies ++= Seq(
   "com.github.austinv11"        % "Discord4J"     % "2.7.0",
