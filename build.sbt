@@ -22,7 +22,8 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-generic" % "0.8.0",
   "io.circe" %% "circe-jawn" % "0.8.0",
   "io.circe" %% "circe-numbers" % "0.8.0",
-  "io.circe" %% "circe-parser" % "0.8.0"
+  "io.circe" %% "circe-parser" % "0.8.0",
+  "com.lihaoyi" %% "fastparse" % "0.4.3"
 )
 
 libraryDependencies ++= Seq(
