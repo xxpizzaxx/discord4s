@@ -1,4 +1,6 @@
-package discord4s.tagless.examples
+package discord4s
+package tagless
+package examples
 
 import cats.Monad
 import cats.data.{ReaderT, StateT}
@@ -10,8 +12,6 @@ import cats._, cats.implicits._, cats.syntax._
 object EchoBot extends App {
   case class EchoBotState(name: Option[String] = None)
 
-  implicit def passthrough[F[_]: Monad, C, A](f: => F[A]): StateT[F, C, A] = StateT { c: C => f.map((c, _)) }
-
   def echobot[P, F[_]: Monad](implicit bot: Bot[P, F]): StateT[F, EchoBotState, Unit] = {
     for {
       _       <- StateT { s: EchoBotState =>
@@ -21,10 +21,10 @@ object EchoBot extends App {
           Monad[F].pure((s, ()))
         }
       }
-      msg     <- bot.getMessage
-      channel <- bot.getChannel
-      author  <- bot.getSender
-      _       <- bot.reply(s"I saw $author say $msg in $channel")
+      msg     <- StateT.lift(bot.getMessage)
+      channel <- StateT.lift(bot.getChannel)
+      author  <- StateT.lift(bot.getSender)
+      _       <- StateT.lift(bot.reply(s"I saw $author say $msg in $channel"))
     } yield ()
   }
 

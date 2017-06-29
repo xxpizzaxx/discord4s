@@ -17,6 +17,8 @@ import ArgonautShapeless._, shapeless._
 
 import scalaz.concurrent.Task
 
+import scala.language.higherKinds
+
 
 object WhoBot extends App {
 
@@ -29,7 +31,6 @@ object WhoBot extends App {
     .build()
 
   import scala.language.implicitConversions
-  implicit def passthrough[F[_]: Monad, C, A](f: => F[A]): StateT[F, C, A] = StateT { c: C => f.map((c, _)) }
 
   def whobot[P, E[_]: Effect, F[_]: Monad](implicit bot: Bot[P, F]) = {
       for {
