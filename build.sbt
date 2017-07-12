@@ -23,10 +23,14 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-jawn" % "0.8.0",
   "io.circe" %% "circe-numbers" % "0.8.0",
   "io.circe" %% "circe-parser" % "0.8.0",
-  "com.lihaoyi" %% "fastparse" % "0.4.3"
+  "com.lihaoyi" %% "fastparse" % "0.4.3",
+  "co.fs2" %% "fs2-core" % "0.9.6",
+  "co.fs2" %% "fs2-io" % "0.9.6"
 )
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest"   % "2.2.6"   % "test",
   "org.mockito"   % "mockito-core" % "1.10.19" % "test"
 )
+
+scalacOptions := Seq("-feature")

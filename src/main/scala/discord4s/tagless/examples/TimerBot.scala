@@ -42,7 +42,7 @@ object TimerBot extends App {
             bot.delay { timer }.map(t => (s.copy(timers = t :: s.timers),()))
           case _ =>
             println("nop")
-            bot.delay(()).map((s,_))
+            StateT.lift(bot.delay(())).run(s)
         }
       }
       _       <- StateT { s: TimerBotState =>
@@ -65,9 +65,16 @@ object TimerBot extends App {
   )
 
   // works
+  import fs2._
   val bot = echobot[stdio, ReaderT[IO, DebugMessage, ?]] //.run(msg).unsafeRunSync
-  messages.foldLeft(TimerBotState()) { (state, message) =>
+
+  val s = Stream.emits(messages).scan(TimerBotState()) { (state, message) =>
     bot.run(state).run(message).unsafeRunSync._1
   }
+  s.run
+  /*
+  messages.foldLeft(TimerBotState()) { (state, message) =>
+    bot.run(state).run(message).unsafeRunSync._1
+  }*/
 
 }

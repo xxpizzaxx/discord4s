@@ -17,6 +17,6 @@ object stdio {
     override def setNickname(nick: String) = ReaderT { m => io.delay { println(s"changing my nick to $nick"); this.nick = nick }}
     override def getChannelTopic           = ReaderT { m => io.delay { m.channel.topic }}
     override def getChannelMembers         = ReaderT { m => io.delay { m.channel.members }}
-    override def delay[A](a: => A)             = ReaderT { m => io.delay { a }}
+    override def delay[A](a: => A)         = ReaderT { _ => io.delay { a }}
   }
 }

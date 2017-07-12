@@ -17,6 +17,6 @@ object discord {
     override def setNickname(nick: String) = ReaderT { m => io.delay { m.getClient.changeUsername(nick)} }
     override def getChannelTopic           = ReaderT { m => io.delay { m.getMessage.getChannel.getTopic }}
     override def getChannelMembers         = ReaderT { m => io.delay { m.getMessage.getChannel.getUsersHere.asScala.map(_.getName).toList }}
-    override def delay[A](a: => A)             = ReaderT { m => io.delay { a }}
+    override def delay[A](a: => A)         = ReaderT { _ => io.delay { a }}
   }
 }
